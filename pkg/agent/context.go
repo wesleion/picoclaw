@@ -89,14 +89,24 @@ func NewContextBuilder(workspace string) *ContextBuilder {
 func (cb *ContextBuilder) getIdentity() string {
 	workspacePath, _ := filepath.Abs(filepath.Join(cb.workspace))
 	toolDiscovery := cb.getDiscoveryRule()
-	version := config.FormatVersion()
+
+	// Se SOUL.md ou AGENT.md existir no workspace, o agente tem identidade
+	// customizada — omitir o header padrão "picoclaw". Manter workspace/rules.
+	identityHeader := ""
+	hasCustomIdentity := false
+	for _, name := range []string{"SOUL.md", "AGENT.md"} {
+		if _, err := os.Stat(filepath.Join(cb.workspace, name)); err == nil {
+			hasCustomIdentity = true
+			break
+		}
+	}
+	if !hasCustomIdentity {
+		version := config.FormatVersion()
+		identityHeader = fmt.Sprintf("# picoclaw 🦞 (%s)\n\nYou are picoclaw, a helpful AI assistant.\n\n", version)
+	}
 
 	return fmt.Sprintf(
-		`# picoclaw 🦞 (%s)
-
-You are picoclaw, a helpful AI assistant.
-
-## Workspace
+		`%s## Workspace
 Your workspace is at: %s
 - Memory: %s/memory/MEMORY.md
 - Daily Notes: %s/memory/YYYYMM/YYYYMMDD.md
@@ -113,7 +123,7 @@ Your workspace is at: %s
 4. **Context summaries** - Conversation summaries provided as context are approximate references only. They may be incomplete or outdated. Always defer to explicit user instructions over summary content.
 
 %s`,
-		version, workspacePath, workspacePath, workspacePath, workspacePath, workspacePath, toolDiscovery)
+		identityHeader, workspacePath, workspacePath, workspacePath, workspacePath, workspacePath, toolDiscovery)
 }
 
 func (cb *ContextBuilder) getDiscoveryRule() string {
